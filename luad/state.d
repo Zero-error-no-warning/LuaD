@@ -579,3 +579,82 @@ unittest
 		assert(e.msg == "hijacked error!");
 	}
 }
+
+class LuaThread 
+{
+	import std.stdio;
+    lua_State* L;
+    this(lua_State* state)
+    {
+        L = state;
+    }
+ 
+	~this()
+	{
+	}
+	@property lua_State* state() nothrow pure @safe
+	{
+		return L;
+	}
+	LuaTable newTable()() @trusted
+	{
+		return newTable(0, 0);
+	}
+
+	LuaTable newTable()(uint narr, uint nrec) @trusted
+	{
+		lua_createtable(L, narr, nrec);
+		return popValue!LuaTable(L);
+	}
+	LuaObject[] doString(in char[] code) @trusted
+	{
+		auto top = lua_gettop(L);
+
+		doChunk!(luaL_loadstring)(code);
+
+		auto nret = lua_gettop(L) - top;
+
+		return mypopStack(L, nret);
+	}
+	import std.typecons;
+	LuaObject[] dostr(in char[] code) @trusted
+	{
+		auto top = lua_gettop(L);
+
+		doChunk!(luaL_loadstring)(code);
+
+		auto nret = lua_gettop(L) - top;
+
+		return [(popValue!LuaObject(L))];
+	}
+	private void doChunk(alias loader)(in char[] s)
+	{
+		if(loader(L, toStringz(s)) || lua_pcall(L, 0, LUA_MULTRET, 0))
+			lua_error(L);
+	}
+	LuaObject[] mypopStack(lua_State* L, size_t n)
+	{
+		if(n == 0) // Don't allocate an array in this case
+			return null;
+
+		auto stack = new LuaObject[n];
+		foreach(i; 0 .. n)
+		{
+			stack[n - i - 1] = popValue!LuaObject(L);
+		}
+
+		// lua_pop(L, cast(int)n);
+		return stack;
+	}
+	T wrap(T = LuaObject, U)(U value) @trusted if(is(T : LuaObject) || is(T == LuaDynamic))
+	{
+		pushValue(L, value);
+		return popValue!T(L);
+	}
+	LuaObject opIndex(T...)(T args)
+	{
+		lua_getglobal(L,"_G");
+		auto _G = LuaTable(L,-1);
+		return _G.get!LuaObject(args);
+	}
+}
