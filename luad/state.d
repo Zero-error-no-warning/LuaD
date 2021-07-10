@@ -616,17 +616,6 @@ class LuaThread
 
 		return mypopStack(L, nret);
 	}
-	import std.typecons;
-	LuaObject[] dostr(in char[] code) @trusted
-	{
-		auto top = lua_gettop(L);
-
-		doChunk!(luaL_loadstring)(code);
-
-		auto nret = lua_gettop(L) - top;
-
-		return [(popValue!LuaObject(L))];
-	}
 	private void doChunk(alias loader)(in char[] s)
 	{
 		if(loader(L, toStringz(s)) || lua_pcall(L, 0, LUA_MULTRET, 0))
