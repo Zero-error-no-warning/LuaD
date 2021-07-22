@@ -646,4 +646,11 @@ class LuaThread
 		auto _G = LuaTable(L,-1);
 		return _G.get!LuaObject(args);
 	}
+	T get(T, U...)(U args)
+	{
+		lua_getglobal(L,"_G");
+		auto _G = LuaTable(L,-1);
+		return _G.get!T(args);
+	}
+
 }
